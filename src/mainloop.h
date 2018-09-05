@@ -33,6 +33,11 @@
 
 #pragma once
 
+#include <ros/ros.h>
+#include <image_transport/image_transport.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <cv_bridge/cv_bridge.h>
+
 #include <flow_opencv.hpp>
 #include <mavlink.h>
 #include <opencv2/opencv.hpp>
@@ -45,44 +50,49 @@ using namespace cv;
 
 class Mainloop {
 public:
-	int init(const char *camera_device, int camera_id, uint32_t camera_width,
-			uint32_t camera_height, uint32_t crop_width, uint32_t crop_height,
-			const char *mavlink_tcp_ip, unsigned long mavlink_tcp_port,
-			int flow_output_rate, float focal_length_x, float focal_length_y);
-	int run();
-	void shutdown();
+    int init(const char *camera_device, int camera_id, uint32_t camera_width,
+            uint32_t camera_height, uint32_t crop_width, uint32_t crop_height,
+            const char *mavlink_tcp_ip, unsigned long mavlink_tcp_port,
+            int flow_output_rate, float focal_length_x, float focal_length_y);
+    int run();
+    void shutdown();
 
-	void camera_callback(const void *img, size_t len, const struct timeval *timestamp);
-	void highres_imu_msg_callback(const mavlink_highres_imu_t *msg);
-	void *camera_thread();
+    void camera_callback(const void *img, size_t len, const struct timeval *timestamp);
+    void highres_imu_msg_callback(const mavlink_highres_imu_t *msg);
+    void *camera_thread();
 
 private:
 
 #if DEBUG_LEVEL
-	const char *_window_name = "Aero down face camera test";
+    const char *_window_name = "Aero down face camera test";
 #endif
 
-	uint64_t _camera_initial_timestamp = 0;
-	uint64_t _camera_prev_timestamp = 0;
-	uint64_t _offset_timestamp_usec = 0;
-	uint64_t _next_exposure_update_timestap = 0;
+    uint64_t _camera_initial_timestamp = 0;
+    uint64_t _camera_prev_timestamp = 0;
+    uint64_t _offset_timestamp_usec = 0;
+    uint64_t _next_exposure_update_timestap = 0;
 
-	float _msv_error_int = 0.0f;
-	float _msv_error_old = 0.0f;
+    int _camera_width = 640;
+    int _camera_height = 480;
+    float _msv_error_int = 0.0f;
+    float _msv_error_old = 0.0f;
 
-	Point3_<double> _gyro_integrated = {};
-	uint64_t _gyro_prev_timestamp = 0;
+    Point3_<double> _gyro_integrated = {};
+    uint64_t _gyro_prev_timestamp = 0;
 
-	Camera *_camera;
-	OpticalFlowOpenCV *_optical_flow;
-	Mavlink_TCP *_mavlink;
+    Camera *_camera;
+    OpticalFlowOpenCV *_optical_flow;
+    Mavlink_TCP *_mavlink;
 
-	pthread_mutex_t _mainloop_lock;
+    pthread_mutex_t _mainloop_lock;
 
-	uint64_t _gyro_last_usec_timestamp = 0;
+    uint64_t _gyro_last_usec_timestamp = 0;
 
-	void _signal_handlers_setup();
-	void _loop();
+    void _signal_handlers_setup();
+    void _loop();
 
-	void _exposure_update(Mat frame, uint64_t timestamp);
+    ros::NodeHandle nh;
+    image_transport::ImageTransport* image_transport;
+    image_transport::Publisher image_publisher;
+    void _exposure_update(Mat frame, uint64_t timestamp);
 };

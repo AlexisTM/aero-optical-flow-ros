@@ -33,6 +33,7 @@
 
 #include <getopt.h>
 
+#include <ros/ros.h>
 #include "log.h"
 #include "mainloop.h"
 
@@ -51,7 +52,7 @@ static struct {
 		{160, 120},
 };
 
-#define DEFAULT_RESOLUTION 1
+#define DEFAULT_RESOLUTION 0
 #define DEFAULT_IMG_WIDTH resolutions[DEFAULT_RESOLUTION].width
 #define DEFAULT_IMG_HEIGHT resolutions[DEFAULT_RESOLUTION].height
 #define DEFAULT_IMG_CROP_WIDTH 128
@@ -195,8 +196,9 @@ static int x_y_float_split(char *arg, float *x, float *y)
 	return 0;
 }
 
-int main (int argc, char *argv[])
+int main(int argc, char** argv)
 {
+    ros::init(argc, argv, "aero_optical_flow_node");
 	Mainloop mainloop;
 	int c;
 	const struct option options[] = {

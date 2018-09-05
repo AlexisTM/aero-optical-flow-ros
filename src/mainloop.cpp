@@ -69,20 +69,20 @@ static volatile bool _should_run;
 
 static void exit_signal_handler(UNUSED int signum)
 {
-    _should_run = false;
+	_should_run = false;
 }
 
 void Mainloop::_signal_handlers_setup(void)
 {
-    struct sigaction sa = { };
+	struct sigaction sa = { };
 
-    sa.sa_flags = SA_NOCLDSTOP;
-    sa.sa_handler = exit_signal_handler;
-    sigaction(SIGTERM, &sa, NULL);
-    sigaction(SIGINT, &sa, NULL);
+	sa.sa_flags = SA_NOCLDSTOP;
+	sa.sa_handler = exit_signal_handler;
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
 
-    sa.sa_handler = SIG_IGN;
-    sigaction(SIGPIPE, &sa, NULL);
+	sa.sa_handler = SIG_IGN;
+	sigaction(SIGPIPE, &sa, NULL);
 }
 
 static void *_thread_callback(void *data)
@@ -190,8 +190,8 @@ void Mainloop::_loop()
 
 static void _camera_callback(const void *img, size_t len, const struct timeval *timestamp, void *data)
 {
-       Mainloop *mainloop = (Mainloop *)data;
-       mainloop->camera_callback(img, len, timestamp);
+	   Mainloop *mainloop = (Mainloop *)data;
+	   mainloop->camera_callback(img, len, timestamp);
 }
 
 void Mainloop::_exposure_update(Mat frame, uint64_t timestamp_us)
@@ -277,6 +277,7 @@ void Mainloop::_exposure_update(Mat frame, uint64_t timestamp_us)
 /* Callback called from another thread */
 void Mainloop::camera_callback(const void *img, UNUSED size_t len, const struct timeval *timestamp)
 {
+	ros::Time now = ros::Time::now();
 	int dt_us = 0;
 	float flow_x_ang = 0, flow_y_ang = 0;
 
@@ -372,6 +373,16 @@ void Mainloop::camera_callback(const void *img, UNUSED size_t len, const struct 
 
 	_mavlink->optical_flow_rad_msg_write(&msg);
 	pthread_mutex_unlock(&_mainloop_lock);
+
+
+	cv::Rect clean_crop(0, 0, _camera_width-10, _camera_height-10);
+	cv::Mat frame_gray_cleaner = frame_gray(clean_crop);
+
+	sensor_msgs::ImagePtr image_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", frame_gray_cleaner).toImageMsg();
+	image_msg->header.frame_id = "camera";
+	image_msg->header.stamp = now;
+	image_publisher.publish(image_msg);
+	ros::spinOnce();
 }
 
 static void _highres_imu_msg_callback(const mavlink_highres_imu_t *msg, void *data)
@@ -409,6 +420,11 @@ int Mainloop::init(const char *camera_device, int camera_id,
 		uint32_t crop_height, const char *mavlink_tcp_ip, unsigned long mavlink_tcp_port,
 		int flow_output_rate, float focal_length_x, float focal_length_y)
 {
+	_camera_width = camera_width;
+	_camera_height = camera_height;
+	image_transport = new image_transport::ImageTransport(nh);
+	image_publisher = image_transport->advertise("camera/image_raw", 1);
+
 	_camera = new Camera(camera_device);
 	if (!_camera) {
 		ERROR("No memory to allocate Camera");
