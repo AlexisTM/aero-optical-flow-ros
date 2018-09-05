@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <poll.h>
 #include <pthread.h>
+#include <boost/format.hpp>
 
 #include <linux/videodev2.h>
 #include <opencv2/opencv.hpp>
@@ -378,10 +379,12 @@ void Mainloop::camera_callback(const void *img, UNUSED size_t len, const struct 
 	cv::Rect clean_crop(0, 0, _camera_width-10, _camera_height-10);
 	cv::Mat frame_gray_cleaner = frame_gray(clean_crop);
 
+
+    sensor_msgs::CameraInfoPtr camera_info(new sensor_msgs::CameraInfo(cinfo_->getCameraInfo()));
 	sensor_msgs::ImagePtr image_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", frame_gray_cleaner).toImageMsg();
 	image_msg->header.frame_id = "camera";
 	image_msg->header.stamp = now;
-	image_publisher.publish(image_msg);
+	image_publisher.publish(image_msg, camera_info);
 	ros::spinOnce();
 }
 
@@ -421,9 +424,11 @@ int Mainloop::init(const char *camera_device, int camera_id,
 		int flow_output_rate, float focal_length_x, float focal_length_y)
 {
 	_camera_width = camera_width;
-	_camera_height = camera_height;
+	_camera_height = camera_height;	
 	image_transport = new image_transport::ImageTransport(nh);
-	image_publisher = image_transport->advertise("camera/image_raw", 1);
+	image_publisher = image_transport->advertiseCamera("image_raw", 1);
+	cinfo_ = boost::make_shared<camera_info_manager::CameraInfoManager>(nh);// new camera_info_manager::CameraInfoManager(nh);
+	cinfo_->setCameraName("bottom_cam");
 
 	_camera = new Camera(camera_device);
 	if (!_camera) {

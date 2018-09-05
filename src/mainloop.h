@@ -34,9 +34,15 @@
 #pragma once
 
 #include <ros/ros.h>
+#include <camera_info_manager/camera_info_manager.h>
+#include <diagnostic_updater/diagnostic_updater.h>
+#include <diagnostic_updater/publisher.h>
+#include <dynamic_reconfigure/server.h>
 #include <image_transport/image_transport.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <cv_bridge/cv_bridge.h>
+
+#include <boost/thread/mutex.hpp>
 
 #include <flow_opencv.hpp>
 #include <mavlink.h>
@@ -93,6 +99,7 @@ private:
 
     ros::NodeHandle nh;
     image_transport::ImageTransport* image_transport;
-    image_transport::Publisher image_publisher;
+    image_transport::CameraPublisher image_publisher;
+    boost::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_;
     void _exposure_update(Mat frame, uint64_t timestamp);
 };

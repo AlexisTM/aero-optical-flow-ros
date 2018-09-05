@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   image_transport
+  camera_info_manager
 )
 
 set(MAVLINK_DIALECT common)
@@ -28,7 +29,7 @@ add_subdirectory(modules/OpticalFlow)
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES intel-aero
-   CATKIN_DEPENDS diagnostic_msgs roscpp sensor_msgs image_transport
+   CATKIN_DEPENDS diagnostic_msgs roscpp sensor_msgs image_transport camera_info_manager
 #  DEPENDS system_lib
 )
 
