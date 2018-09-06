@@ -20,7 +20,8 @@ cd ~/Workspace
 catkin build
 # or catkin_make
 source ~/Workspace/devel/setup.bash
-rosrun aero_optical_flow aero-optical-flow
+rosrun aero_optical_flow aero-optical-flow _compute_vio:=true # Default, enable vio
+# rosrun aero_optical_flow aero-optical-flow _compute_vio:=false
 ```
 
 ## Result
