@@ -320,8 +320,10 @@ void Mainloop::camera_callback(const void *img, UNUSED size_t len, const struct 
 	// Copy the data into new matrix -> cropped_image.data can not be used in calcFlow()...
 	cropped_image.copyTo(cropped);
 	cropped_image.release();
-
-	int flow_quality = _optical_flow->calcFlow(cropped.data, (uint32_t)img_time_us, dt_us, flow_x_ang, flow_y_ang);
+	int flow_quality = 0;
+	if(compute_vio) {
+		flow_quality = _optical_flow->calcFlow(cropped.data, (uint32_t)img_time_us, dt_us, flow_x_ang, flow_y_ang);
+	}
 
 	cropped.release();
 	_camera_prev_timestamp = img_time_us;
@@ -372,9 +374,10 @@ void Mainloop::camera_callback(const void *img, UNUSED size_t len, const struct 
 	msg.sensor_id = 0;
 	msg.quality = flow_quality;
 
-	_mavlink->optical_flow_rad_msg_write(&msg);
-	pthread_mutex_unlock(&_mainloop_lock);
-
+	if(compute_vio) {
+		_mavlink->optical_flow_rad_msg_write(&msg);
+		pthread_mutex_unlock(&_mainloop_lock);
+	}
 
 	cv::Rect clean_crop(0, 0, _camera_width-10, _camera_height-10);
 	cv::Mat frame_gray_cleaner = frame_gray(clean_crop);
@@ -385,6 +388,8 @@ void Mainloop::camera_callback(const void *img, UNUSED size_t len, const struct 
 	image_msg->header.frame_id = "camera";
 	image_msg->header.stamp = now;
 	image_publisher.publish(image_msg, camera_info);
+	frame_gray.release();
+	frame_gray_cleaner.release();
 	ros::spinOnce();
 }
 
@@ -427,8 +432,13 @@ int Mainloop::init(const char *camera_device, int camera_id,
 	_camera_height = camera_height;	
 	image_transport = new image_transport::ImageTransport(nh);
 	image_publisher = image_transport->advertiseCamera("image_raw", 1);
-	cinfo_ = boost::make_shared<camera_info_manager::CameraInfoManager>(nh);// new camera_info_manager::CameraInfoManager(nh);
+	cinfo_ = boost::make_shared<camera_info_manager::CameraInfoManager>(nh);
 	cinfo_->setCameraName("bottom_cam");
+
+	ros::NodeHandle pnh("~");
+	pnh.param("compute_vio", compute_vio, compute_vio);
+	if(compute_vio) 	ROS_INFO("Computing VIO");
+	if(not compute_vio) ROS_INFO("NOT Computing VIO");
 
 	_camera = new Camera(camera_device);
 	if (!_camera) {

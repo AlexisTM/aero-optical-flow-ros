@@ -97,6 +97,7 @@ private:
     void _signal_handlers_setup();
     void _loop();
 
+    bool compute_vio = true;
     ros::NodeHandle nh;
     image_transport::ImageTransport* image_transport;
     image_transport::CameraPublisher image_publisher;
