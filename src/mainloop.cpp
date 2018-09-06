@@ -62,7 +62,7 @@
 #define EXPOSURE_ABOSULUTE_MAX_VALUE 1727
 #define GAIN_CHANGE_THRESHOLD 15.0
 #define GAIN_ABOSULUTE_MAX_VALUE 127
-#define CAMERA_FPS_MIN 70
+#define CAMERA_FPS_MIN 50
 
 using namespace cv;
 
@@ -286,6 +286,17 @@ void Mainloop::camera_callback(const void *img, UNUSED size_t len, const struct 
 
 	Mat frame_gray = Mat(_camera->height, _camera->width, CV_8UC1);
 	frame_gray.data = (uchar*)img;
+	
+	cv::Rect clean_crop(0, 0, _camera_width-10, _camera_height-10);
+	cv::Mat frame_gray_cleaner = frame_gray(clean_crop);
+	sensor_msgs::CameraInfoPtr camera_info(new sensor_msgs::CameraInfo(cinfo_->getCameraInfo()));
+	sensor_msgs::ImagePtr image_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", frame_gray_cleaner).toImageMsg();
+	image_msg->header.frame_id = "camera";
+	image_msg->header.stamp = now;
+	image_publisher.publish(image_msg, camera_info);
+	frame_gray.release();
+	frame_gray_cleaner.release();
+	ros::spinOnce();
 
 #if DEBUG_LEVEL
 	imshow(_window_name, frame_gray);
@@ -376,21 +387,9 @@ void Mainloop::camera_callback(const void *img, UNUSED size_t len, const struct 
 
 	if(compute_vio) {
 		_mavlink->optical_flow_rad_msg_write(&msg);
-		pthread_mutex_unlock(&_mainloop_lock);
 	}
 
-	cv::Rect clean_crop(0, 0, _camera_width-10, _camera_height-10);
-	cv::Mat frame_gray_cleaner = frame_gray(clean_crop);
-
-
-    sensor_msgs::CameraInfoPtr camera_info(new sensor_msgs::CameraInfo(cinfo_->getCameraInfo()));
-	sensor_msgs::ImagePtr image_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", frame_gray_cleaner).toImageMsg();
-	image_msg->header.frame_id = "camera";
-	image_msg->header.stamp = now;
-	image_publisher.publish(image_msg, camera_info);
-	frame_gray.release();
-	frame_gray_cleaner.release();
-	ros::spinOnce();
+	pthread_mutex_unlock(&_mainloop_lock);
 }
 
 static void _highres_imu_msg_callback(const mavlink_highres_imu_t *msg, void *data)
