@@ -286,15 +286,21 @@ void Mainloop::camera_callback(const void *img, UNUSED size_t len, const struct 
 
 	Mat frame_gray = Mat(_camera->height, _camera->width, CV_8UC1);
 	frame_gray.data = (uchar*)img;
-	
+
 	cv::Rect clean_crop(0, 0, _camera_width-10, _camera_height-10);
 	cv::Mat frame_gray_cleaner = frame_gray(clean_crop);
 	sensor_msgs::CameraInfoPtr camera_info(new sensor_msgs::CameraInfo(cinfo_->getCameraInfo()));
 	sensor_msgs::ImagePtr image_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", frame_gray_cleaner).toImageMsg();
 	image_msg->header.frame_id = "camera";
 	image_msg->header.stamp = now;
+	
+	if(camera_info->width != image_msg->width or camera_info->height != image_msg->height) {
+		camera_info.reset(new sensor_msgs::CameraInfo());
+	    camera_info->height = image_msg->height;
+	    camera_info->width = image_msg->width;
+	}
+
 	image_publisher.publish(image_msg, camera_info);
-	frame_gray.release();
 	frame_gray_cleaner.release();
 	ros::spinOnce();
 
@@ -389,6 +395,7 @@ void Mainloop::camera_callback(const void *img, UNUSED size_t len, const struct 
 		_mavlink->optical_flow_rad_msg_write(&msg);
 	}
 
+	frame_gray.release();
 	pthread_mutex_unlock(&_mainloop_lock);
 }
 
